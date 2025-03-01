@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, Request } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Post } from '@nestjs/common';
 import { AppService } from './guru.service';
 import { DraftDTO } from '../../dtos/draft.dto';
 
@@ -12,8 +12,11 @@ export class AppController {
   }
 
   @Post('nextPicks')
-  getNextPicks(@Body() currentDraft: DraftDTO): DraftDTO | undefined {
-    console.log(currentDraft);
-    return this.appService.getNextPicks(currentDraft);
+  getNextPicks(@Body() currentDraft: DraftDTO): DraftDTO {
+    const nextPicks = this.appService.getNextPicks(currentDraft);
+    if (!nextPicks) {
+      throw new NotFoundException('No drafts found');
+    }
+    return nextPicks;
   }
 }
