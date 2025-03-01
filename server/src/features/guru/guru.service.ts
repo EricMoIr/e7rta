@@ -1,23 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import { Draft } from './draft';
-
-export type DraftEntity = {
-  id: string;
-  myHeroes: Hero[];
-  myPrebans: Hero[];
-  theirHeroes: Hero[];
-  theirPrebans: Hero[];
-  isWin: boolean;
-  isFirstPick: boolean;
-};
+import { DraftDTO } from '../../dtos/draft.dto';
+import { Draft } from '../../entities/draft.entity';
+import { Hero } from '../../entities/hero.entity';
 
 // TODO: Eventually this should be an injectable repository
 export const storedDrafts: Map<string, Draft> = new Map();
 
 @Injectable()
 export class AppService {
-  getAllDrafts(): DraftEntity[] {
-    const drafts: DraftEntity[] = [
+  getAllDrafts(): Draft[] {
+    const drafts: Draft[] = [
       {
         id: '1',
         isFirstPick: true,
@@ -76,36 +68,14 @@ export class AppService {
             sets: [],
           },
         ],
-        myPrebans: [
-          {
-            id: 'harsetti',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'zio',
-            artifact: '',
-            sets: [],
-          },
-        ],
-        theirPrebans: [
-          {
-            id: 'ml peira',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'harsetti',
-            artifact: '',
-            sets: [],
-          },
-        ],
+        myPrebans: ['harsetti', 'zio'],
+        theirPrebans: ['ml peira', 'harsetti'],
       },
     ];
     return drafts;
   }
 
-  getNextPicks(currentDraft: Draft): Draft | undefined {
+  getNextPicks(currentDraft: DraftDTO): DraftDTO | undefined {
     // TODO: Maybe I should eventually return an array of Drafts for multiple options
     // get all the drafts that start with the currentDraft
     const isFirstPick = (currentDraft.myHeroes.length & 1) === 1;
@@ -135,7 +105,7 @@ export class AppService {
     }
     // TODO: This should eventually be a long list, so either return the one that has the most wins or the one that has the best winrate
     const nextDraft = winningDrafts[0];
-    return new Draft(nextDraft.myHeroes, nextDraft.theirHeroes);
+    return new DraftDTO(nextDraft.myHeroes, nextDraft.theirHeroes);
   }
 
   isSameDraftPrefix(heroes: Hero[], heroesToCompareWith: Hero[]): boolean {

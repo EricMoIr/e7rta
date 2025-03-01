@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { AppModule } from './features/guru/guru.module';
 import { fetchDrafts } from './worker';
 
 async function bootstrap() {

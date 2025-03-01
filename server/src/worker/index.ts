@@ -2,8 +2,10 @@
 // TODO: For now, it will work according to a flag, turn into a cron job later
 
 import https from 'https';
-import { DraftEntity, storedDrafts } from './app.service';
-import { Draft } from './draft';
+import { storedDrafts } from '../features/guru/guru.service';
+import { DraftDTO } from '../dtos/draft.dto';
+import { Draft } from '../entities/draft.entity';
+import { Hero } from '../entities/hero.entity';
 
 const API_URL = 'https://epic7.onstove.com/gg/gameApi';
 const MAX_PAGES = 1;
@@ -32,13 +34,13 @@ async function fetchJSON<T>(url: string): Promise<T> {
 }
 
 type Player = {
-  id: string;
-  worldCode: string;
+  id: number;
+  worldCode: WorldCode;
 };
 async function fetchLegendPlayers(): Promise<Player[]> {
   const legendPlayers: Player[] = [];
   for (let i = 1; i <= MAX_PAGES; i++) {
-    const playersResponse = await fetchJSON<{ result_body: any[] }>(
+    const playersResponse = await fetchJSON<GetLegendPlayers>(
       `${API_URL}/getWorldUserRankingDetail?season_code=pvp_rta_ss16&world_code=all&current_page=${i}&lang=en`,
     );
     const players = playersResponse.result_body.map((player) => ({
@@ -57,13 +59,13 @@ async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchPlayerDrafts(player: Player): Promise<DraftEntity[]> {
-  const playerDrafts: DraftEntity[] = [];
+async function fetchPlayerDrafts(player: Player): Promise<Draft[]> {
+  const playerDrafts: Draft[] = [];
   for (let i = 1; i <= MAX_PAGES; i++) {
-    const draftsResponse = await fetchJSON<{ result_body: any }>(
+    const draftsResponse = await fetchJSON<GetPlayerGames>(
       `${API_URL}/getBattleList?nick_no=${player.id}&world_code=${player.worldCode}&current_page=${i}&lang=en`,
     );
-    const drafts: DraftEntity[] = [];
+    const drafts: Draft[] = [];
     for (const draft of draftsResponse.result_body.battle_list) {
       // In case the draft is not complete, skip it
       if (
@@ -74,18 +76,10 @@ async function fetchPlayerDrafts(player: Player): Promise<DraftEntity[]> {
       }
       const myHeroes: Hero[] = JSON.parse(
         `{${draft.teamBettleInfo}}`,
-      ).my_team.map((hero) => ({
-        id: hero.hero_code,
-        artifact: hero.artifact,
-        sets: [...hero.equip],
-      }));
+      ).my_team.map((hero: BattleInfo_API_Hero) => Hero.fromAPI(hero));
       const theirHeroes: Hero[] = JSON.parse(
         `{${draft.teamBettleInfoenemy}}`,
-      ).my_team.map((hero) => ({
-        id: hero.hero_code,
-        artifact: hero.artifact,
-        sets: [...hero.equip],
-      }));
+      ).my_team.map((hero: BattleInfo_API_Hero) => Hero.fromAPI(hero));
       drafts.push({
         id: draft.battle_seq,
         myHeroes,

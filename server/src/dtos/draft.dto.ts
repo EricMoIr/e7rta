@@ -1,4 +1,6 @@
-export class Draft {
+import { Hero } from '../entities/hero.entity';
+
+export class DraftDTO {
   constructor(myHeroes: Hero[], theirHeroes: Hero[]) {
     console.log('constructor');
     this.myHeroes = myHeroes;
