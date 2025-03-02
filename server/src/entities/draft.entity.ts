@@ -1,14 +1,24 @@
+import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { DraftDTO } from '../dtos/draft.dto';
 import { Hero } from './hero.entity';
 
+@Entity()
 export class Draft {
+  @PrimaryColumn()
   id: string;
+  @Column()
   key: string;
+  @Column({ type: 'jsonb', array: false })
   myHeroes: Hero[];
+  @Column({ type: 'simple-array' })
   myPrebans: string[];
+  @Column({ type: 'jsonb', array: false })
   theirHeroes: Hero[];
+  @Column({ type: 'simple-array' })
   theirPrebans: string[];
+  @Column()
   isWin: boolean;
+  @Column()
   isFirstPick: boolean;
 
   static serialize(

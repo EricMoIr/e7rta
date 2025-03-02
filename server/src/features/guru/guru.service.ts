@@ -3,6 +3,7 @@ import { DraftDTO } from '../../dtos/draft.dto';
 import { Draft } from '../../entities/draft.entity';
 import { Hero } from '../../entities/hero.entity';
 import { get } from 'http';
+import { BestDraftsResponseDTO } from '@/src/dtos/best-drafts-response.dto';
 
 // TODO: Eventually this should be an injectable repository
 export const storedDrafts: Map<string, Draft> = new Map();
@@ -86,11 +87,12 @@ export class AppService {
     });
   }
 
-  async getBestDrafts(currentDraft: DraftDTO): Promise<DraftDTO | undefined> {
+  async getBestDrafts(currentDraft: DraftDTO): Promise<BestDraftsResponseDTO> {
     // TODO: Maybe I should eventually return an array of Drafts for multiple options
     // get all the drafts that start with the currentDraft
     const drafts = await this.getAllDrafts();
     const bestDrafts = new Map<string, BestDraft>();
+    const ret = new BestDraftsResponseDTO();
     for (const draft of drafts) {
       if (this.isSameDraftPrefix(currentDraft, draft)) {
         const bestDraft = bestDrafts.get(draft.key);
@@ -121,15 +123,29 @@ export class AppService {
       }
     }
     if (bestDrafts.size === 0) {
-      return undefined;
+      return ret;
     }
     const averages = this.calculateBayesianAverages(bestDrafts);
-    const highestAverage = this.getHighestAverage(averages);
-    return new DraftDTO(
-      highestAverage.draft.myHeroes,
-      highestAverage.draft.theirHeroes,
-      currentDraft.isFirstPick,
-    );
+    const sortedAverages = [...averages.values()];
+    sortedAverages.sort((a, b) => a.average - b.average);
+    ret.drafts = sortedAverages.map((bestDraft) => {
+      return {
+        totalGames: bestDraft.total,
+        winRate: bestDraft.wins / bestDraft.total,
+        draft: new DraftDTO(
+          bestDraft.draft.myHeroes,
+          bestDraft.draft.theirHeroes,
+          currentDraft.isFirstPick,
+        ),
+      };
+    });
+    return ret;
+    // const highestAverage = this.getHighestAverage(averages);
+    // return new DraftDTO(
+    //   highestAverage.draft.myHeroes,
+    //   highestAverage.draft.theirHeroes,
+    //   currentDraft.isFirstPick,
+    // );
   }
   getHighestAverage(averages: Map<string, BestDraft>): BestDraft {
     let highestAverage = 0;
