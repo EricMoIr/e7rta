@@ -49,12 +49,18 @@ async function fetchLegendPlayers(): Promise<Player[]> {
 
 async function fetchPlayerDrafts(player: Player): Promise<Draft[]> {
   const playerDrafts: Draft[] = [];
-  for (let i = 1; i <= MAX_PAGES; i++) {
+  let stop = false;
+  for (let i = 1; i <= MAX_PAGES && !stop; i++) {
     const draftsResponse = await fetchJSON<GetPlayerGames>(
       `${API_URL}/getBattleList?nick_no=${player.id}&world_code=${player.worldCode}&current_page=${i}&lang=en`,
     );
     const drafts: Draft[] = [];
     for (const draft of draftsResponse.result_body.battle_list) {
+      // In case the draft was already stored, stop the loop
+      if (storedDrafts.has(draft.battle_seq)) {
+        stop = true;
+        break;
+      }
       // In case the draft is not complete, skip it
       if (
         draft.my_deck.hero_list.length < 5 ||
@@ -68,7 +74,7 @@ async function fetchPlayerDrafts(player: Player): Promise<Draft[]> {
       const theirHeroes: Hero[] = JSON.parse(
         `{${draft.teamBettleInfoenemy}}`,
       ).my_team.map((hero: BattleInfo_API_Hero) => Hero.fromAPI(hero));
-      drafts.push({
+      const draftEntity = {
         id: draft.battle_seq,
         myHeroes,
         theirHeroes,
@@ -76,7 +82,14 @@ async function fetchPlayerDrafts(player: Player): Promise<Draft[]> {
         isWin: draft.iswin === 1,
         myPrebans: [...draft.my_deck.preban_list],
         theirPrebans: [...draft.enemy_deck.preban_list],
-      });
+        key: '',
+      };
+      draftEntity.key = Draft.serialize(
+        draftEntity.myHeroes.map((h) => h.id),
+        draftEntity.theirHeroes.map((h) => h.id),
+        draftEntity.isFirstPick,
+      );
+      drafts.push(draftEntity);
     }
     playerDrafts.push(...drafts);
     if (i < MAX_PAGES) {

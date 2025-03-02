@@ -11,12 +11,12 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Post('nextPicks')
-  getNextPicks(@Body() currentDraft: DraftDTO): DraftDTO {
-    const nextPicks = this.appService.getNextPicks(currentDraft);
-    if (!nextPicks) {
+  @Post('bestDrafts')
+  async getBestDrafts(@Body() currentDraft: DraftDTO): Promise<DraftDTO> {
+    const bestDrafts = await this.appService.getBestDrafts(currentDraft);
+    if (!bestDrafts) {
       throw new NotFoundException('No drafts found');
     }
-    return nextPicks;
+    return bestDrafts;
   }
 }

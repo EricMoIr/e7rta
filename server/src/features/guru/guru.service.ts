@@ -2,119 +2,174 @@ import { Injectable } from '@nestjs/common';
 import { DraftDTO } from '../../dtos/draft.dto';
 import { Draft } from '../../entities/draft.entity';
 import { Hero } from '../../entities/hero.entity';
+import { get } from 'http';
 
 // TODO: Eventually this should be an injectable repository
 export const storedDrafts: Map<string, Draft> = new Map();
 
+type BestDraft = {
+  wins: number;
+  total: number;
+  average: number;
+  draft: Draft;
+};
+
 @Injectable()
 export class AppService {
-  getAllDrafts(): Draft[] {
-    const drafts: Draft[] = [
-      {
-        id: '1',
-        isFirstPick: true,
-        isWin: true,
-        myHeroes: [
-          {
-            id: 'ml poli',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'veronica',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'bbk',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'nahkwol',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'briar witch iseria',
-            artifact: '',
-            sets: [],
-          },
-        ],
-        theirHeroes: [
-          {
-            id: 'aflan',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'bmhaste',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'moon bunny',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'ml ilynav',
-            artifact: '',
-            sets: [],
-          },
-          {
-            id: 'dilibet',
-            artifact: '',
-            sets: [],
-          },
-        ],
-        myPrebans: ['harsetti', 'zio'],
-        theirPrebans: ['ml peira', 'harsetti'],
-      },
-    ];
-    return drafts;
+  async getAllDrafts(): Promise<Draft[]> {
+    return new Promise((res) => {
+      const drafts: Draft[] = [
+        {
+          id: '1',
+          isFirstPick: true,
+          isWin: true,
+          key: 'ml poli,aflan,bmhaste,bbk,veronica,ml ilynav,moon bunny,briar witch iseria,nahkwol,dilibet',
+          myHeroes: [
+            {
+              id: 'ml poli',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'veronica',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'bbk',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'nahkwol',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'briar witch iseria',
+              artifact: '',
+              sets: [],
+            },
+          ],
+          theirHeroes: [
+            {
+              id: 'aflan',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'bmhaste',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'moon bunny',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'ml ilynav',
+              artifact: '',
+              sets: [],
+            },
+            {
+              id: 'dilibet',
+              artifact: '',
+              sets: [],
+            },
+          ],
+          myPrebans: ['harsetti', 'zio'],
+          theirPrebans: ['ml peira', 'harsetti'],
+        },
+      ];
+      res(drafts);
+    });
   }
 
-  getNextPicks(currentDraft: DraftDTO): DraftDTO | undefined {
+  async getBestDrafts(currentDraft: DraftDTO): Promise<DraftDTO | undefined> {
     // TODO: Maybe I should eventually return an array of Drafts for multiple options
     // get all the drafts that start with the currentDraft
-    const isFirstPick = (currentDraft.myHeroes.length & 1) === 1;
-    const drafts = this.getAllDrafts();
-    const winningDrafts = drafts.filter((draft) => {
-      if (draft.isFirstPick === isFirstPick) {
-        if (!draft.isWin) {
-          return false;
+    const drafts = await this.getAllDrafts();
+    const bestDrafts = new Map<string, BestDraft>();
+    for (const draft of drafts) {
+      if (this.isSameDraftPrefix(currentDraft, draft)) {
+        const bestDraft = bestDrafts.get(draft.key);
+        if (bestDraft) {
+          if (draft.isWin) {
+            bestDrafts.set(draft.key, {
+              wins: bestDraft!.wins + 1,
+              total: bestDraft!.total + 1,
+              average: 0,
+              draft,
+            });
+          } else {
+            bestDrafts.set(draft.key, {
+              wins: bestDraft!.wins,
+              total: bestDraft!.total + 1,
+              average: 0,
+              draft,
+            });
+          }
+        } else {
+          bestDrafts.set(draft.key, {
+            wins: Number(draft.isWin),
+            total: 1,
+            average: 0,
+            draft,
+          });
         }
-        return (
-          this.isSameDraftPrefix(currentDraft.myHeroes, draft.myHeroes) &&
-          this.isSameDraftPrefix(currentDraft.theirHeroes, draft.theirHeroes)
-        );
       }
-      if (draft.isFirstPick !== isFirstPick) {
-        if (draft.isWin) {
-          return false;
-        }
-        return (
-          this.isSameDraftPrefix(currentDraft.myHeroes, draft.theirHeroes) &&
-          this.isSameDraftPrefix(currentDraft.theirHeroes, draft.myHeroes)
-        );
-      }
-    });
-    if (winningDrafts.length === 0) {
+    }
+    if (bestDrafts.size === 0) {
       return undefined;
     }
-    // TODO: This should eventually be a long list, so either return the one that has the most wins or the one that has the best winrate
-    const nextDraft = winningDrafts[0];
-    return new DraftDTO(nextDraft.myHeroes, nextDraft.theirHeroes);
+    const averages = this.calculateBayesianAverages(bestDrafts);
+    const highestAverage = this.getHighestAverage(averages);
+    return new DraftDTO(
+      highestAverage.draft.myHeroes,
+      highestAverage.draft.theirHeroes,
+      currentDraft.isFirstPick,
+    );
   }
-
-  isSameDraftPrefix(heroes: Hero[], heroesToCompareWith: Hero[]): boolean {
-    for (let i = 0; i < heroes.length; i++) {
-      if (heroes[i].id !== heroesToCompareWith[i].id) {
-        return false;
+  getHighestAverage(averages: Map<string, BestDraft>): BestDraft {
+    let highestAverage = 0;
+    let bestDraft;
+    for (const [key, value] of averages) {
+      if (value.average > highestAverage) {
+        highestAverage = value.average;
+        bestDraft = value;
       }
     }
-    return true;
+    return bestDraft;
+  }
+  calculateBayesianAverages(
+    bestDrafts: Map<string, BestDraft>,
+  ): Map<string, BestDraft> {
+    const c = 10;
+    let totalValue = 0;
+    let totalElements = 0;
+    for (const { wins, total } of bestDrafts.values()) {
+      totalValue += wins;
+      totalElements += total;
+    }
+    const mean = totalValue / totalElements;
+    const averages = new Map<string, BestDraft>();
+    for (const [key, value] of bestDrafts) {
+      averages.set(key, {
+        ...value,
+        average: (c * mean + value.wins) / (c + value.total),
+      });
+    }
+    return averages;
+  }
+
+  isSameDraftPrefix(heroes: DraftDTO, heroesToCompareWith: Draft): boolean {
+    const key = Draft.serialize(
+      heroes.myHeroes.map((hero) => hero.id),
+      heroes.theirHeroes.map((hero) => hero.id),
+      heroes.isFirstPick,
+    );
+    return heroesToCompareWith.key.startsWith(key);
   }
 
   getHello(): string {

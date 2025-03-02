@@ -1,12 +1,17 @@
-import { Hero } from '../entities/hero.entity';
+import { HeroDTO } from '../dtos/hero.dto';
 
 export class DraftDTO {
-  constructor(myHeroes: Hero[], theirHeroes: Hero[]) {
-    console.log('constructor');
+  constructor(
+    myHeroes: HeroDTO[],
+    theirHeroes: HeroDTO[],
+    isFirstPick: boolean,
+  ) {
     this.myHeroes = myHeroes;
     this.theirHeroes = theirHeroes;
+    this.isFirstPick = isFirstPick;
   }
 
-  myHeroes: Hero[];
-  theirHeroes: Hero[];
+  myHeroes: HeroDTO[];
+  theirHeroes: HeroDTO[];
+  isFirstPick: boolean;
 }
