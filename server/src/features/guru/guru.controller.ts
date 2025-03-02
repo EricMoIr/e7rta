@@ -1,22 +1,22 @@
 import { Body, Controller, Get, NotFoundException, Post } from '@nestjs/common';
-import { AppService } from './guru.service';
+import { GuruService } from './guru.service';
 import { DraftDTO } from '../../dtos/draft.dto';
-import { BestDraftsResponseDTO } from '@/src/dtos/best-drafts-response.dto';
+import { BestDraftsResponseDTO } from '../../dtos/best-drafts-response.dto';
 
 @Controller()
-export class AppController {
-  constructor(private readonly appService: AppService) {}
+export class GuruController {
+  constructor(private readonly guruService: GuruService) {}
 
   @Get()
   getHello(): string {
-    return this.appService.getHello();
+    return this.guruService.getHello();
   }
 
   @Post('bestDrafts')
   async getBestDrafts(
     @Body() currentDraft: DraftDTO,
   ): Promise<BestDraftsResponseDTO> {
-    const bestDrafts = await this.appService.getBestDrafts(currentDraft);
+    const bestDrafts = await this.guruService.getBestDrafts(currentDraft);
     if (!bestDrafts.drafts) {
       throw new NotFoundException('No drafts found');
     }

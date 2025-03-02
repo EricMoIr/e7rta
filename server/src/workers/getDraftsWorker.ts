@@ -7,22 +7,20 @@ import { Hero } from '../entities/hero.entity';
 import { fetchJSON, sleep } from './utils';
 
 const API_URL = 'https://epic7.onstove.com/gg/gameApi';
-const MAX_PAGES = 1;
+const MAX_DRAFT_PAGES = 50;
+const MAX_PLAYERS_PAGES = 10;
 const SLEEP_TIME = 100;
 
 export async function fetchDrafts() {
   const legendPlayers = await fetchLegendPlayers();
-  console.log(legendPlayers);
   for (const legendPlayer of legendPlayers) {
     const drafts = await fetchPlayerDrafts(legendPlayer);
-    console.log(drafts);
     for (const draft of drafts) {
       if (!storedDrafts.has(draft.id)) {
         storedDrafts.set(draft.id, draft);
       }
     }
   }
-  console.log(storedDrafts.size);
 }
 
 type Player = {
@@ -31,7 +29,7 @@ type Player = {
 };
 async function fetchLegendPlayers(): Promise<Player[]> {
   const legendPlayers: Player[] = [];
-  for (let i = 1; i <= MAX_PAGES; i++) {
+  for (let i = 1; i <= MAX_PLAYERS_PAGES; i++) {
     const playersResponse = await fetchJSON<GetLegendPlayers>(
       `${API_URL}/getWorldUserRankingDetail?season_code=pvp_rta_ss16&world_code=all&current_page=${i}&lang=en`,
     );
@@ -40,7 +38,7 @@ async function fetchLegendPlayers(): Promise<Player[]> {
       worldCode: player.world_code,
     }));
     legendPlayers.push(...players);
-    if (i < MAX_PAGES) {
+    if (i < MAX_PLAYERS_PAGES) {
       sleep(SLEEP_TIME);
     }
   }
@@ -50,11 +48,14 @@ async function fetchLegendPlayers(): Promise<Player[]> {
 async function fetchPlayerDrafts(player: Player): Promise<Draft[]> {
   const playerDrafts: Draft[] = [];
   let stop = false;
-  for (let i = 1; i <= MAX_PAGES && !stop; i++) {
+  for (let i = 1; i <= MAX_DRAFT_PAGES && !stop; i++) {
     const draftsResponse = await fetchJSON<GetPlayerGames>(
       `${API_URL}/getBattleList?nick_no=${player.id}&world_code=${player.worldCode}&current_page=${i}&lang=en`,
     );
     const drafts: Draft[] = [];
+    if (!draftsResponse.result_body.total_count) {
+      break;
+    }
     for (const draft of draftsResponse.result_body.battle_list) {
       // In case the draft was already stored, stop the loop
       if (storedDrafts.has(draft.battle_seq)) {
@@ -92,7 +93,7 @@ async function fetchPlayerDrafts(player: Player): Promise<Draft[]> {
       drafts.push(draftEntity);
     }
     playerDrafts.push(...drafts);
-    if (i < MAX_PAGES) {
+    if (i < MAX_DRAFT_PAGES) {
       sleep(SLEEP_TIME);
     }
   }

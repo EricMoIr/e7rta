@@ -1,5 +1,4 @@
 import { Column, Entity, PrimaryColumn } from 'typeorm';
-import { DraftDTO } from '../dtos/draft.dto';
 import { Hero } from './hero.entity';
 
 @Entity()

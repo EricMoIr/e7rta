@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DraftDTO } from '../../dtos/draft.dto';
 import { Draft } from '../../entities/draft.entity';
-import { Hero } from '../../entities/hero.entity';
-import { get } from 'http';
-import { BestDraftsResponseDTO } from '@/src/dtos/best-drafts-response.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { BestDraftsResponseDTO } from '../../dtos/best-drafts-response.dto';
 
 // TODO: Eventually this should be an injectable repository
 export const storedDrafts: Map<string, Draft> = new Map();
@@ -16,8 +16,12 @@ type BestDraft = {
 };
 
 @Injectable()
-export class AppService {
-  async getAllDrafts(): Promise<Draft[]> {
+export class GuruService {
+  constructor(
+    @InjectRepository(Draft) private draftRepository: Repository<Draft>,
+  ) {}
+
+  async getAllDraftsMock(): Promise<Draft[]> {
     return new Promise((res) => {
       const drafts: Draft[] = [
         {
@@ -85,6 +89,11 @@ export class AppService {
       ];
       res(drafts);
     });
+  }
+
+  async getAllDrafts(): Promise<Draft[]> {
+    return this.draftRepository.find();
+    // return Promise.resolve([]);
   }
 
   async getBestDrafts(currentDraft: DraftDTO): Promise<BestDraftsResponseDTO> {
