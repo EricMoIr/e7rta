@@ -5,6 +5,7 @@ import { Draft } from '../entities/draft.entity';
 import { Hero } from '../entities/hero.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, QueryRunner, Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 
 const API_URL = 'https://epic7.onstove.com/gg/gameApi';
 const MAX_DRAFT_PAGES = 50;
@@ -20,12 +21,16 @@ type Player = {
 export class DraftsWorker {
   private readonly logger = new Logger(DraftsWorker.name);
   constructor(
-    // @InjectRepository(Draft) private draftRepository: Repository<Draft>,
+    private readonly configService: ConfigService,
     private readonly dataSource: DataSource,
   ) {}
 
   @Interval(1000 * 60 * 60 * 24) // Run every 24 hours since the app starts
   async start() {
+    // TODO: Make config factory to avoid these parsings
+    if (!Boolean(this.configService.get<boolean>('RUN_DRAFTS_WORKER'))) {
+      return;
+    }
     this.logger.debug('Started fetching drafts');
     const count = await this.fetchDrafts();
     this.logger.debug(`Fetched ${count} drafts`);

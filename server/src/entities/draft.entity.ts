@@ -53,4 +53,10 @@ export class Draft {
     }
     return key;
   }
+
+  static getPartialKey(originalKey: string, maxLen: number): string {
+    const newKey = originalKey.split(',');
+    newKey.length = Math.min(newKey.length, maxLen);
+    return newKey.join(',');
+  }
 }

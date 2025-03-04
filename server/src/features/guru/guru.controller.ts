@@ -22,4 +22,15 @@ export class GuruController {
     }
     return bestDrafts;
   }
+
+  @Post('bestPicks')
+  async getBestPicks(
+    @Body() currentDraft: DraftDTO,
+  ): Promise<BestDraftsResponseDTO> {
+    const bestPicks = await this.guruService.getBestPicks(currentDraft);
+    if (!bestPicks.drafts) {
+      throw new NotFoundException('No drafts found');
+    }
+    return bestPicks;
+  }
 }

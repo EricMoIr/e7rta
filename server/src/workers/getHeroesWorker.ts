@@ -11,9 +11,12 @@ export async function fetchHeroes() {
     'GET',
   );
   const { en } = heroes;
+  const finalHeroes = en.filter(
+    (hero) => !(hero.code === 'c0001' || hero.code === 'c1005'),
+  );
   fs.writeFileSync(
     `${HEROES_PATH}/e7_heroes.json`,
-    JSON.stringify(en, null, 2),
+    JSON.stringify(finalHeroes, null, 2),
   );
 
   for (const hero of en) {

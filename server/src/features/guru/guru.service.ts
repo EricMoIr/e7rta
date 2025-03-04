@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { DraftDTO } from '../../dtos/draft.dto';
 import { Draft } from '../../entities/draft.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -17,6 +17,7 @@ type BestDraft = {
 
 @Injectable()
 export class GuruService {
+  private readonly logger = new Logger(GuruService.name);
   constructor(
     @InjectRepository(Draft) private draftRepository: Repository<Draft>,
   ) {}
@@ -93,12 +94,85 @@ export class GuruService {
 
   async getAllDrafts(): Promise<Draft[]> {
     return this.draftRepository.find();
-    // return Promise.resolve([]);
+  }
+
+  async getBestPicks(currentDraft: DraftDTO): Promise<BestDraftsResponseDTO> {
+    const drafts = await this.getAllDrafts();
+    const bestDrafts = new Map<string, BestDraft>();
+    const ret = new BestDraftsResponseDTO();
+    const totalHeroes =
+      currentDraft.myHeroes.length + currentDraft.theirHeroes.length;
+    const nextHeroesAmount = totalHeroes < 9 ? 2 : 1;
+    const areNextHeroesMine =
+      currentDraft.myHeroes.length < currentDraft.theirHeroes.length;
+    for (const draft of drafts) {
+      if (this.isSameDraftPrefix(currentDraft, draft)) {
+        const partialKey = Draft.getPartialKey(
+          draft.key,
+          totalHeroes + nextHeroesAmount,
+        );
+        const bestDraft = bestDrafts.get(partialKey);
+        if (bestDraft) {
+          if (draft.isWin) {
+            bestDrafts.set(partialKey, {
+              wins: bestDraft!.wins + 1,
+              total: bestDraft!.total + 1,
+              average: 0,
+              draft,
+            });
+          } else {
+            bestDrafts.set(partialKey, {
+              wins: bestDraft!.wins,
+              total: bestDraft!.total + 1,
+              average: 0,
+              draft,
+            });
+          }
+        } else {
+          bestDrafts.set(partialKey, {
+            wins: Number(draft.isWin),
+            total: 1,
+            average: 0,
+            draft,
+          });
+        }
+      }
+    }
+    if (bestDrafts.size === 0) {
+      return ret;
+    }
+    const averages = this.calculateBayesianAverages(bestDrafts);
+    const sortedAverages = [...averages.values()];
+    sortedAverages.sort((a, b) => b.average - a.average);
+    ret.drafts = sortedAverages.map((bestDraft) => {
+      if (currentDraft.isFirstPick !== bestDraft.draft.isFirstPick) {
+        const aux = bestDraft.draft.myHeroes;
+        bestDraft.draft.myHeroes = bestDraft.draft.theirHeroes;
+        bestDraft.draft.theirHeroes = aux;
+      }
+      if (areNextHeroesMine) {
+        bestDraft.draft.myHeroes.length =
+          currentDraft.myHeroes.length + nextHeroesAmount;
+        bestDraft.draft.theirHeroes.length = currentDraft.theirHeroes.length;
+      } else {
+        bestDraft.draft.myHeroes.length = currentDraft.myHeroes.length;
+        bestDraft.draft.theirHeroes.length =
+          currentDraft.theirHeroes.length + nextHeroesAmount;
+      }
+      return {
+        totalGames: bestDraft.total,
+        winRate: bestDraft.wins / bestDraft.total,
+        draft: new DraftDTO(
+          bestDraft.draft.myHeroes,
+          bestDraft.draft.theirHeroes,
+          currentDraft.isFirstPick,
+        ),
+      };
+    });
+    return ret;
   }
 
   async getBestDrafts(currentDraft: DraftDTO): Promise<BestDraftsResponseDTO> {
-    // TODO: Maybe I should eventually return an array of Drafts for multiple options
-    // get all the drafts that start with the currentDraft
     const drafts = await this.getAllDrafts();
     const bestDrafts = new Map<string, BestDraft>();
     const ret = new BestDraftsResponseDTO();
@@ -136,7 +210,7 @@ export class GuruService {
     }
     const averages = this.calculateBayesianAverages(bestDrafts);
     const sortedAverages = [...averages.values()];
-    sortedAverages.sort((a, b) => a.average - b.average);
+    sortedAverages.sort((a, b) => b.average - a.average);
     ret.drafts = sortedAverages.map((bestDraft) => {
       return {
         totalGames: bestDraft.total,
@@ -149,12 +223,6 @@ export class GuruService {
       };
     });
     return ret;
-    // const highestAverage = this.getHighestAverage(averages);
-    // return new DraftDTO(
-    //   highestAverage.draft.myHeroes,
-    //   highestAverage.draft.theirHeroes,
-    //   currentDraft.isFirstPick,
-    // );
   }
   getHighestAverage(averages: Map<string, BestDraft>): BestDraft {
     let highestAverage = 0;
