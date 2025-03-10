@@ -31,9 +31,9 @@ export class DraftsWorker {
     if (!Boolean(this.configService.get<boolean>('RUN_DRAFTS_WORKER'))) {
       return;
     }
-    this.logger.debug('Started fetching drafts');
+    this.logger.log('Started fetching drafts');
     const count = await this.fetchDrafts();
-    this.logger.debug(`Fetched ${count} drafts`);
+    this.logger.log(`Stored ${count} new drafts`);
   }
 
   async fetchDrafts(): Promise<number> {

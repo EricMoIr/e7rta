@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { DraftDTO } from '../../dtos/draft.dto';
 import { Draft } from '../../entities/draft.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { BestDraftsResponseDTO } from '../../dtos/best-drafts-response.dto';
 
 // TODO: Eventually this should be an injectable repository
@@ -92,54 +92,65 @@ export class GuruService {
     });
   }
 
+  async getDraftsContainingThis(currentDraft: DraftDTO): Promise<Draft[]> {
+    // TODO: Consider using trigram index to speed this up
+    return this.draftRepository.find({
+      where: {
+        key: Like(
+          `${Draft.serialize(
+            currentDraft.myHeroes.map((hero) => hero.id),
+            currentDraft.theirHeroes.map((hero) => hero.id),
+            currentDraft.isFirstPick,
+          )}%`,
+        ),
+      },
+    });
+  }
+
   async getAllDrafts(): Promise<Draft[]> {
     return this.draftRepository.find();
   }
 
   async getBestPicks(currentDraft: DraftDTO): Promise<BestDraftsResponseDTO> {
-    const drafts = await this.getAllDrafts();
-    const bestDrafts = new Map<string, BestDraft>();
     const ret = new BestDraftsResponseDTO();
+    const drafts = await this.getDraftsContainingThis(currentDraft);
+    if (drafts.length === 0) return ret;
+    const bestDrafts = new Map<string, BestDraft>();
     const totalHeroes =
       currentDraft.myHeroes.length + currentDraft.theirHeroes.length;
     const nextHeroesAmount = totalHeroes < 9 ? 2 : 1;
     const areNextHeroesMine =
       currentDraft.myHeroes.length < currentDraft.theirHeroes.length;
     for (const draft of drafts) {
-      if (this.isSameDraftPrefix(currentDraft, draft)) {
-        const partialKey = Draft.getPartialKey(
-          draft.key,
-          totalHeroes + nextHeroesAmount,
-        );
-        const bestDraft = bestDrafts.get(partialKey);
-        if (bestDraft) {
-          if (draft.isWin) {
-            bestDrafts.set(partialKey, {
-              wins: bestDraft!.wins + 1,
-              total: bestDraft!.total + 1,
-              average: 0,
-              draft,
-            });
-          } else {
-            bestDrafts.set(partialKey, {
-              wins: bestDraft!.wins,
-              total: bestDraft!.total + 1,
-              average: 0,
-              draft,
-            });
-          }
+      const partialKey = Draft.getPartialKey(
+        draft.key,
+        totalHeroes + nextHeroesAmount,
+      );
+      const bestDraft = bestDrafts.get(partialKey);
+      if (bestDraft) {
+        if (draft.isWin) {
+          bestDrafts.set(partialKey, {
+            wins: bestDraft!.wins + 1,
+            total: bestDraft!.total + 1,
+            average: 0,
+            draft,
+          });
         } else {
           bestDrafts.set(partialKey, {
-            wins: Number(draft.isWin),
-            total: 1,
+            wins: bestDraft!.wins,
+            total: bestDraft!.total + 1,
             average: 0,
             draft,
           });
         }
+      } else {
+        bestDrafts.set(partialKey, {
+          wins: Number(draft.isWin),
+          total: 1,
+          average: 0,
+          draft,
+        });
       }
-    }
-    if (bestDrafts.size === 0) {
-      return ret;
     }
     const averages = this.calculateBayesianAverages(bestDrafts);
     const sortedAverages = [...averages.values()];
