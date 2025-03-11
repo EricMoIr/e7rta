@@ -1,0 +1,17 @@
+.is-mine {
+  mask-image: radial-gradient(
+    circle at 220% 50%,
+    transparent 0,
+    transparent 60%,
+    black 60%
+  );
+}
+
+.is-theirs {
+  mask-image: radial-gradient(
+    circle at -120% 50%,
+    transparent 0,
+    transparent 60%,
+    black 60%
+  );
+}
