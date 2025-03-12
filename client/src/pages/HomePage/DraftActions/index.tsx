@@ -1,44 +1,22 @@
 import { FC } from "react";
-import pluralize from "pluralize";
+import resetIcon from "../../../assets/reset.svg";
+import "./index.scss";
 
 const DraftActions: FC<{
   onClear: () => void;
   onSearchDrafts: () => void;
-  onPrev: () => void;
-  onNext: () => void;
   loading: boolean;
-  bestDrafts: DraftDTO[];
-  index: number;
-}> = ({
-  onClear,
-  onSearchDrafts,
-  onPrev,
-  onNext,
-  loading,
-  bestDrafts,
-  index,
-}) => {
+}> = ({ onClear, onSearchDrafts, loading }) => {
   return (
-    <div className="flex flex-col justify-center">
+    <div className="flex flex-row justify-center actions justify-self-end">
       <button onClick={onSearchDrafts} disabled={loading}>
         Find best answer
       </button>
-      <button onClick={onClear} disabled={loading}>
-        Clear
-      </button>
-      {index >= 0 && (
-        <div>
-          <button onClick={onPrev} disabled={index < 1}>
-            Prev
-          </button>
-          Win rate: {parseFloat((bestDrafts[index].winRate * 100).toFixed(2))}%
-          out of {bestDrafts[index].totalGames}{" "}
-          {pluralize("game", bestDrafts[index].totalGames)}
-          <button onClick={onNext} disabled={index === bestDrafts.length - 1}>
-            Next
-          </button>
-        </div>
-      )}
+      <img
+        src={resetIcon}
+        className="cursor-pointer size-8"
+        onClick={!loading ? onClear : undefined}
+      />
     </div>
   );
 };

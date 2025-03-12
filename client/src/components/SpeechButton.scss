@@ -1,0 +1,59 @@
+$border-color: black;
+$background-color: #eee;
+.speech-button {
+  position: relative;
+  border-radius: 0.4em;
+  border: 2px solid $border-color;
+  cursor: pointer;
+
+  &.selected {
+    cursor: auto;
+    background-color: $background-color;
+    &::after {
+      border-color: $background-color transparent;
+    }
+  }
+
+  &.right {
+    &::after {
+      left: 70%;
+    }
+    &::before {
+      left: 70%;
+    }
+  }
+
+  &.left {
+    &::after {
+      left: 5%;
+    }
+    &::before {
+      left: 5%;
+    }
+  }
+
+  &::before {
+    content: "";
+    position: absolute;
+    bottom: -13px;
+    width: 0;
+    height: 0;
+    border-width: 13px 13px 0;
+    border-style: solid;
+    border-color: $border-color transparent;
+    border-bottom: 0;
+    z-index: -1;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -11px;
+    width: 0;
+    height: 0;
+    border-width: 13px 13px 0;
+    border-style: solid;
+    border-color: #fff transparent;
+    border-bottom: 0;
+  }
+}

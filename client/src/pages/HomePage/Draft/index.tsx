@@ -4,6 +4,7 @@ import HeroPicker from "../HeroPicker";
 import DraftActions from "../DraftActions";
 import { useFetch } from "../../../hooks/useFetch";
 import { getHero } from "../../../utils";
+import DraftResults from "../DraftResults";
 
 const Draft: FC = () => {
   const [isFirstPick, setIsFirstPick] = useState(true);
@@ -123,19 +124,26 @@ const Draft: FC = () => {
           heroes={myHeroes}
           isMine
         />
-        <DraftActions
-          onClear={handleClear}
-          onSearchDrafts={handleSearchDrafts}
-          onPrev={() => setCurrentBestDraftIndex((i) => i - 1)}
-          onNext={() => setCurrentBestDraftIndex((i) => i + 1)}
-          loading={loading}
-          bestDrafts={bestDrafts}
-          index={currentBestDraftIndex}
-        />
+        <div className="flex-1 min-w-80 flex flex-col">
+          {currentBestDraftIndex !== -1 && (
+            <DraftResults
+              bestDrafts={bestDrafts}
+              index={currentBestDraftIndex}
+              onPrev={() => setCurrentBestDraftIndex((i) => i - 1)}
+              onNext={() => setCurrentBestDraftIndex((i) => i + 1)}
+            />
+          )}
+          <DraftActions
+            onClear={handleClear}
+            onSearchDrafts={handleSearchDrafts}
+            loading={loading}
+          />
+        </div>
         <PlayerDraft
           isFirstPick={!isFirstPick}
           onFirstPickChange={() => setIsFirstPick(false)}
           heroes={theirHeroes}
+          isMine={false}
         />
       </div>
     </div>
